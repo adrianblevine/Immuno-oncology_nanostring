@@ -1,39 +1,26 @@
 # Need to remove additional files (not in log) before running this
 
-library(here)
-library(formattable)
-library(gt)
-library(janitor)
 library(tidyverse)
-
 library(NanoStringQCPro)
 
-source(here("R/fxns_misc.R"))    
-source(here("R/fxns_norm.R"))    
+rcc_files <- dir("/path/to/rcc/dir", full.names = TRUE)
 
-OUTP <- here("results/12-13/qc")
-dir.create(OUTP, showWarnings=F)
+# RLF file is NanoString panel specific and is required to load RCC files
+RLF_FILE <- "/path/to/file.rlf"
 
-### hard coded variables #################################################
+PDATA_FILE <- "here("data/nanostring_log.tsv")"
 
-LABEL_FILE <- here("data/nanostring_log.tsv")
 
-RCC_DIR <- here("data/RCC_files")
-rcc_files <- dir(RCC_DIR, full.names = TRUE)
-
-RLF_FILE <- here("ref/Hawkins_Imm_1_C2903+A3378.rlf")
-
-# generate QC report with nanostring QC pro - very helpful, but takes a while
-QC_REPORT <- F
 HK_CUTOFF <- 100 # QC cutoff for geo mean of housekeeping genes
 
-# Load RCC files ----------------------------------------------------------
+# load RCC files ----------------------------------------------------------
 
 # extraPdata: files must be tab- separated and contain a column labelled 
 # "FileName" whose values correspond exactly to the rcc filenames 
 # (including .RCC extension) 
 # Note: pseudocount of 1 is added to all measurements to enable subsequent 
 # log transformation of the data
+
 rcc_set <- newRccSet(rcc_files,
                      rlf = RLF_FILE,
                      extraPdata = c(LABEL_FILE),

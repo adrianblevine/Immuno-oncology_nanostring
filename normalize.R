@@ -1,56 +1,57 @@
-# Loads data from RCC files, normalizes samples with standard 
-# NCounter method that I coded, and compares to the NanoStringNorm 
-# package as a sanity check.
-# Prints tables summarizing the most important categories
-# Calculates TIS and adds to pdata
-# Saves as csv files, as well as an expression set
-# 
-# 2022-April-13: also saves refernce set for clinical pipeline
 
-# Preamble ----------------------------------------------------------------
-
-library(janitor)
 library(tidyverse)
-library(gt)
+library(testit)
 
 
 #library(NanoStringNorm)
 library(clusterProfiler) # need for entrez gene identifiers
 library(org.Hs.eg.db) # need for entrez gene identifiers
 
-source(here("R/fxns_misc.R"))    
-source(here("R/fxns_norm.R"))
-
-OUTP <- here("results/12-13")
-dir.create(OUTP, showWarnings=F)
-
-### hard coded variables #################################################
-
 ESET_RDS <- here("data/eset_raw.rds")
-
-LABEL_FILE <- here("data/nanostring_log.tsv")
-
-
-
-# load data ---------------------------------------------------------------
 
 eset <- readRDS(ESET_RDS)
 fdata <- fData(eset)
 pdata <- pData(eset)
 edata <- exprs(eset) %>% as_tibble()
 
-# make reference set for pipeline -----------------------------------------
+# FUNCTIONS -----------------------------------------------------------
 
-fdata_ref <- dplyr::select(fdata, -c(Accession))
-pdata_ref <- dplyr::select(pdata, FileName, study_id,
-                           sample_type, subtype, molecular, sample_id)
-edata_ref <- edata
-rownames(edata_ref) <- fdata_ref$probe
-colnames(edata_ref) <- pdata_ref$study_id
+separate_controls <- function(edata, fdata, column="Code.Class"){
+    positive <- filter(edata, fdata[column] == "Positive") 
+    hk <- filter(edata, fdata[column] == "Housekeeping") 
+    endogenous <- filter(edata, fdata[column] == "Endogenous")
+    negative <- filter(edata, fdata[column] == "Negative") 
+    dat <- list(pos = positive, neg = negative, 
+                hk = hk, endog = endogenous)
+    return(dat)
+}
 
-eset_ref <- make_expression_set(edata_ref, pdata_ref, fdata_ref)
-saveRDS(eset_ref, here("data/pipeline_ref_eset.rds"))
+geo_mean <- function(x) exp(sum(log(x))/length(x))
 
+geo_mean_scale <- function(dat, ctrl) {
+    geo_means <- apply(ctrl, 2, geo_mean)
+    av_geo <- mean(geo_means)
+    fac <- av_geo/geo_means
+    ### see https://stackoverflow.com/questions/51110216/how-to-multiply-each-column-by-each-scalar-in-r
+    norm_ <- mapply(`*`, dat, fac) %>% as_tibble()
+    return(norm_)
+}
+
+normalize_rna <- function(edata, fdata, round=T) {
+    n_hk <- sum(fdata$CodeClass == "Housekeeping") 
+    n_endog <- sum(fdata$CodeClass == "Endogenous")
+    dat <- separate_controls(edata, fdata, column="CodeClass")
+    
+    # KEY IS TO APPLY POSITIVE CONTROL SCALING TO THE HOUSEKEEPING GENES
+    dat1 <- rbind(dat$endog, dat$hk)
+    norm1 <- geo_mean_scale(dat1, dat$pos)
+    dat2 <- norm1[1:n_endog, ]
+    # use scaled HK genes for sample content normalization
+    hk <- norm1[(n_endog + 1):(n_endog+n_hk), ]
+    norm2 <- geo_mean_scale(dat2, hk)
+    if (round) norm2 <- round(norm2)
+    return(norm2)
+}
 
 # normalize  -----------------------------------------------------------
 
@@ -60,7 +61,7 @@ norm_ <- normalize_rna(edata, fdata) %>% as_tibble()
 # verify that my normalization functions produce the same result
 # as the (now unsupported) NanoStringNorm packages (which is the
 # same as the default NSolver normalization)
-
+#
 # 
 # anno <-  fData(eset) %>% 
 #     dplyr::rename("Name" = "probe", "Code.Class" = "CodeClass")
