@@ -2,15 +2,15 @@
 library(tidyverse)
 library(Biobase)
 
-TIS_FILE <- "/path/to/file.csv"
-ESET_RDS <- "/path/to/file.rds"
+TIS_FILE <- "/path/to/tis_weights.csv"
+ESET_RDS <- "/path/to/expression_set.rds"
 
 eset <- readRDS(ESET_RDS)
 fdata <- fData(eset)
 pdata <- pData(eset)
 edata <- exprs(eset) %>% as_tibble()
 
-#
+
 # load weights and make table
 weights <- read_csv(TIS_FILE) %>%
     mutate(GENE = map_chr(GENE, function(x) str_replace(x, "\\.", "-")))
