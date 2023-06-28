@@ -1,13 +1,9 @@
 
 library(tidyverse)
 library(testit)
+library(Biobase)
 
-
-#library(NanoStringNorm)
-library(clusterProfiler) # need for entrez gene identifiers
-library(org.Hs.eg.db) # need for entrez gene identifiers
-
-ESET_RDS <- here("data/eset_raw.rds")
+ESET_RDS <- "/path/to/eset_raw.rds"
 
 eset <- readRDS(ESET_RDS)
 fdata <- fData(eset)
@@ -32,7 +28,6 @@ geo_mean_scale <- function(dat, ctrl) {
     geo_means <- apply(ctrl, 2, geo_mean)
     av_geo <- mean(geo_means)
     fac <- av_geo/geo_means
-    ### see https://stackoverflow.com/questions/51110216/how-to-multiply-each-column-by-each-scalar-in-r
     norm_ <- mapply(`*`, dat, fac) %>% as_tibble()
     return(norm_)
 }
@@ -55,13 +50,21 @@ normalize_rna <- function(edata, fdata, round=T) {
 
 # normalize  -----------------------------------------------------------
 
-norm_ <- normalize_rna(edata, fdata) %>% as_tibble()
+norm_ <- normalize_rna(edata, fdata) %>% 
+    as_tibble()
+
+# then can make and save expression set as shown in load_RCC_QC.R using the
+# pdata and fdata from original expression set, but removing the housekeeping
+# genes from fdata
 
 # NanoStringNorm (to compare) ---------------------------------------------
-# verify that my normalization functions produce the same result
-# as the (now unsupported) NanoStringNorm packages (which is the
-# same as the default NSolver normalization)
-#
+# Can also verify that these normalization functions produce the same result
+# as the NanoStringNorm packages (which is the same as the default 
+# NSolver normalization)
+# This is no longer supported and can be installed from the archive at 
+# https://cran.r-project.org/src/contrib/Archive/NanoStringNorm/
+# 
+# library(NanoStringNorm) # 
 # 
 # anno <-  fData(eset) %>% 
 #     dplyr::rename("Name" = "probe", "Code.Class" = "CodeClass")

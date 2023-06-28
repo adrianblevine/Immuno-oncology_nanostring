@@ -5,7 +5,8 @@ library(Biobase)
 # TIS weights file, with columns for GENE and Weights
 TIS_FILE <- "/path/to/tis_weights.csv"
 
-# expression set of normalized gene counts with 
+# expression set of normalized gene counts with HGNC gene identifiers saved
+# as minimal row data, which must match GENE column in TIS_FILE
 ESET_RDS <- "/path/to/expression_set.rds"
 
 eset <- readRDS(ESET_RDS)
